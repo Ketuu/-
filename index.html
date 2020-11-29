@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>短视频简单实现</title>
+	<!-- icon图标 -->
+	<link rel="icon" href="whu.ico">
+	<!-- swiper插件 -->
+	<link rel="stylesheet" href="./static/swiper/swiper-bundle.min.css">
+	<script src="./static/swiper/swiper-bundle.min.js"></script>
+	<!-- 全局样式 -->
+	<link rel="stylesheet" href="./static/style.css">
+	<!-- 弹性布局 -->
+	<script src="./static/flexable.js"></script>
+	<!-- Vue3.0 -->
+	<script src="https://unpkg.com/vue@next"></script>
+	<!-- 视频数据 -->
+	<script src="./static/data.js"></script>
+</head>
+
+<body>
+	<div id="app">
+		<!-- 视频翻页 -->
+		<div class="swiper-container">
+			<div class="swiper-wrapper">
+				<div class="swiper-slide" v-for="v in videos" @click="doublePlay(v.id, $event)">
+					<!-- 播放按钮 -->
+					<img v-show="!v.playing" src="./static/image/icon_play.png" class="play-btn" alt="播放">
+					<!-- 头像 -->
+					<img :src="v.author" class="author" alt="头像" scrset="">
+					<!-- 获得赞的数量 -->
+					<div class="reward-num">
+						<img v-if="!v.love" src="./static/image/aixin.png">
+						<img v-if="v.love" src="./static/image/active.png">
+						<p>{{v.likenum}}</p>
+					</div>
+					<!-- 点赞出现的心 -->
+					<div class="hearts">
+						<img v-for="h in hearts" :key="h.id" :style="{left:h.x+'px',top:h.y+'px'}"
+							src="./static/image/active.png">
+					</div>
+
+					<!-- 视频   通过id设置是否播放-->
+					<video x5-video-player-fullscreen="true" webkit-playsinline="true" x-webkit-airplay="true"
+						playsinline="true" x5-playsinline :id="'v-'+v.id" :src="v.videoUrl" :poster="v.poster" ></video>
+				</div>
+			</div>
+		</div>
+		<!-- 底部导航栏 -->
+		<footer>
+			<ul>
+				<li>首页</li>
+				<li>朋友</li>
+				<li><img src="">+</li>
+				<li>消息</li>
+				<li>我</li>
+			</ul>
+		</footer>
+	</div>
+
+	<script type="text/javascript">
+		// 获取屏幕左边的距离
+		const screenW = document.querySelector('.swiper-container').offsetLeft
+		// 创建一个应用
+		const app = {
+			data() {
+				return {
+					videos: VIDEOS,
+					lastIndex: 0,
+					currentIndex: 0,
+					timer: null,
+					db_start: 0,
+					hearts: []
+				}
+			},
+			mounted() {
+				let _self = this
+				// 初始化swiper
+				var mySwiper = new Swiper('.swiper-container', {
+					direction: 'vertical', //垂直切换选项
+					on: {
+						slideChangeTransitionEnd: function () {
+							_self.lastIndex = _self.currentIndex
+							_self.currentIndex = this.activeIndex
+							_self.switch() //判断上一个暂停 当前播放
+						}
+					}
+				})
+			},
+			methods: {
+				// 点击播放
+				playClick(id) {
+					this.videos.forEach(v => {
+						if (v.id === id) {
+							// document.querySelector('#v-' + id).play()
+							// 单击暂停
+							if (v.playing) {
+								v.playing = false
+								document.querySelector('#v-' + id).pause()
+							} else {
+								v.playing = true
+								document.querySelector('#v-' + id).play()
+							}
+						}
+					})
+				},
+				switch() {
+					// 当前页停止视频播放，下一页开始播放
+					document.querySelector('#v-' + this.lastIndex).pause()
+					document.querySelector('#v-' + this.currentIndex).play()
+					// 修改播放状态
+					this.videos.forEach(v => {
+						if (v.id === this.lastIndex) {
+							v.playing = false
+						} else if (v.id === this.currentIndex) {
+							v.playing = true
+						}
+					})
+				},
+				// 双击爱心
+				likes(id, e) {
+					// 图片宽度40
+					let x = e.clientX - screenW - 40
+					let y = e.clientY - 40
+					this.hearts.push({
+						x,
+						y,
+						id: new Date().getTime()
+					})
+					if (this.hearts.length > 5) {
+						this.hearts.shift()
+					}
+					this.videos.forEach(v => {
+						if (v.id == id) {
+							v.likenum++
+							v.love = true
+						}
+					})
+				},
+				// 判断双击还是单击事件
+				doublePlay(id, e) {
+					clearTimeout(this.timer)
+					this.timer = setTimeout(() => {
+						clearTimeout(this.timer)
+						this.playClick(id)
+						this.db_start = 0
+					}, 300)
+					if (this.db_start === 0) {
+						this.db_start = new Date().getTime()
+					} else {
+						let now = new Date().getTime()
+						let time = now - this.db_start
+						if (time <= 300) {
+							// 双击事件
+							clearTimeout(this.timer)
+							// 小心心
+							this.likes(id, e)
+						}
+						// 重置时间
+						this.db_start = 0
+					}
+				}
+			}
+		}
+
+		Vue.createApp(app).mount('#app')
+	</script>
+</body>
+
+</html>
